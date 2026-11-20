@@ -93,7 +93,16 @@ static inline bool isWear() {
 }
 #endif
 
-static inline int get_api_level_full() {
+static inline int clamp_api_level_for_kernel(int rv) {
+    if (!isAtLeastKernelVersion(4, 14)) return std::min(rv, 3300);  // 4.9 -> T
+    if (!isAtLeastKernelVersion(4, 19)) return std::min(rv, 3400);  // 4.14 -> U
+    if (!isAtLeastKernelVersion(5, 4))  return std::min(rv, 3500);  // 4.19 -> V
+    if (!isAtLeastKernelVersion(5, 10)) return std::min(rv, 3600);  // 5.4 -> 25Q2
+    if (!isAtLeastKernelVersion(5, 15)) return std::min(rv, 3702);  // 5.10 -> 26Q2/26Q3
+    return rv;
+}
+
+static inline int get_api_level_full_raw() {
     // This fetches/parses 'ro.build.version.sdk' system property.
     const int api_level = android_get_device_api_level();
     // Before Baklava/25Q2 there is no 'sdk_full'
@@ -143,6 +152,10 @@ static inline int get_api_level_full() {
     if (!strcmp(src_apex, "373399999")) return 3705;  // trunk_staging -> 26Q3
 
     return rv;
+}
+
+static inline int get_api_level_full() {
+    return clamp_api_level_for_kernel(get_api_level_full_raw());
 }
 
 const int api_level_full = get_api_level_full();

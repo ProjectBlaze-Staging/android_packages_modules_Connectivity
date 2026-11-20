@@ -22,6 +22,7 @@
 #include <nativehelper/JNIPlatformHelp.h>
 #include <nativehelper/jni_macros.h>
 #include <nativehelper/scoped_local_ref.h>
+#include <sys/eventfd.h>
 #include <utils/misc.h>
 
 #include "bpf/BpfUtils.h"
@@ -34,8 +35,11 @@ using android::net::eventpolling::LocalNetEventHandler;
 static jobject nativeGetLocalNetAccessRingbufFd(JNIEnv *env, jclass clazz) {
     android::base::unique_fd fd = LocalNetEventHandler::GetNewRingbufFd();
     if (!fd.ok()) {
-        ALOGE("Failed to get local net event ring buffer.");
-        return nullptr;
+        ALOGW("Failed to get local net event ring buffer; falling back to dummy eventfd.");
+        fd.reset(eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));
+        if (!fd.ok()) {
+            return nullptr;
+        }
     }
     return jniCreateFileDescriptor(env, fd.release());
 }

@@ -1337,11 +1337,12 @@ static bool exists(const char* const path) {
 }
 
 static bool loadObject(const char* const progPath, const bool useLibbpf = true) {
-    if (useLibbpf ? loadProgByLibbpf(progPath) : loadProg(progPath)) {
-        ALOGE("Failed to load object: %s, libbpf: %d", progPath, useLibbpf);
+    const bool actualUseLibbpf = useLibbpf && isAtLeastKernelVersion(5, 10);
+    if (actualUseLibbpf ? loadProgByLibbpf(progPath) : loadProg(progPath)) {
+        ALOGE("Failed to load object: %s, libbpf: %d", progPath, actualUseLibbpf);
         return false;
     }
-    ALOGD("Loaded object: %s, libbpf: %d", progPath, useLibbpf);
+    ALOGD("Loaded object: %s, libbpf: %d", progPath, actualUseLibbpf);
     return true;
 }
 
@@ -1566,24 +1567,18 @@ static int doLoad(char** argv, char * const envp[]) {
         return 5;
     }
 
-    // 25Q2 bumps the kernel requirement up to 5.4
-    // see also: //system/netd/tests/kernel_test.cpp TestKernel54
+    // GSI cross-device kernel compatibility: allow Linux 4.19+ (e.g. SM6225 spes)
+    // and Linux 5.4/5.10 (e.g. Exynos 2100 S21+, Tensor G1) to boot without fatal abort.
     if (isAtLeast25Q2 && !isAtLeastKernelVersion(5, 4)) {
-        ALOGE("Android 25Q2 requires kernel 5.4.");
-        return 6;
+        ALOGW("Android 25Q2 recommends kernel 5.4; continuing in GSI compat mode.");
     }
 
-    // 25Q4 bumps the kernel requirement up to 5.10
-    // see also: //system/netd/tests/kernel_test.cpp TestKernel510
     if (isAtLeast25Q4 && !isAtLeastKernelVersion(5, 10)) {
-        ALOGE("Android 25Q4 requires kernel 5.10.");
-        return 7;
+        ALOGW("Android 25Q4 recommends kernel 5.10; continuing in GSI compat mode.");
     }
 
-    // 26Q4 bumps the kernel requirement up to 5.15
     if (isAtLeast26Q4 && !isAtLeastKernelVersion(5, 15)) {
-        ALOGE("Android 26Q4 requires kernel 5.15.");
-        return 7;
+        ALOGW("Android 26Q4 recommends kernel 5.15; continuing in GSI compat mode.");
     }
 
     // Technically already required by U, but only enforce on V+

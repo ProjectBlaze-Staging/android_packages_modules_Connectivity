@@ -36,6 +36,11 @@ using bpf::RingbufEventPoller;
 LocalNetEventHandler::LocalNetEventRingbuf *LocalNetEventHandler::GetRingbuf() {
     static LocalNetEventRingbuf *const sRingbuf =
         []() -> LocalNetEventRingbuf * {
+        if (!bpf::isAtLeastKernelVersion(5, 10, 0) ||
+            access(LOCAL_NET_NOTE_OP_RINGBUF_PATH, F_OK) != 0) {
+            ALOGW("LocalNetEventRingbuf not supported on kernel < 5.10");
+            return nullptr;
+        }
         auto rb = std::make_unique<LocalNetEventRingbuf>(
             LOCAL_NET_NOTE_OP_RINGBUF_PATH);
         return rb.release();
@@ -46,8 +51,12 @@ LocalNetEventHandler::LocalNetEventRingbuf *LocalNetEventHandler::GetRingbuf() {
 // static
 std::vector<uint32_t> LocalNetEventHandler::ConsumeAll() {
     std::vector<uint32_t> uids_pids;
+    auto *rb = GetRingbuf();
+    if (!rb) {
+        return uids_pids;
+    }
     base::Result<int> ret =
-        GetRingbuf()->ConsumeAll([&](const LocalNetNoteOp &event) {
+        rb->ConsumeAll([&](const LocalNetNoteOp &event) {
             uids_pids.push_back(event.uid);
             uids_pids.push_back(event.pid);
         });

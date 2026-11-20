@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <sys/eventfd.h>
 #include <vector>
 
 #include <android-base/unique_fd.h>
@@ -36,7 +37,12 @@ class LocalNetEventHandler {
     // Returns a duplicate of the ring buffer file descriptor. This is needed so
     // we can pass the file descriptor via jni for use in polling in java.
     static android::base::unique_fd GetNewRingbufFd() {
-        return GetRingbuf()->GetDuplicateFd();
+        auto *rb = GetRingbuf();
+        if (!rb) {
+            return android::base::unique_fd(
+                eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));
+        }
+        return rb->GetDuplicateFd();
     }
 
     // Consumes all available events in the ring buffer. Returns a list of

@@ -98,7 +98,7 @@ public class LocalNetEventListener {
         if (mStarted) {
             return;
         }
-        if (mMetricsEnabled || mNoteOpsEnabled) {
+        if ((mMetricsEnabled || mNoteOpsEnabled) && mRingbufFd != null) {
             mLooper.getQueue().addOnFileDescriptorEventListener(mRingbufFd,
                     EVENT_INPUT | EVENT_ERROR, this::consumeEvents);
         }

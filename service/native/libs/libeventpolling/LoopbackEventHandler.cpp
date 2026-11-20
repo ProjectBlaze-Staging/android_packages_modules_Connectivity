@@ -53,6 +53,11 @@ bpf::RingbufEventPoller<LoopbackAccessEvent> *
 LoopbackEventHandler::GetPoller() {
     static bpf::RingbufEventPoller<LoopbackAccessEvent> *const sPoller =
         []() -> bpf::RingbufEventPoller<LoopbackAccessEvent> * {
+        if (!bpf::isAtLeastKernelVersion(5, 10, 0) ||
+            access(LOOPBACK_ACCESS_RINGBUF_NETD_PATH, F_OK) != 0) {
+            ALOGW("LoopbackAccessEvent ringbuf not supported on kernel < 5.10");
+            return nullptr;
+        }
         auto rb = std::make_unique<BpfRingbuf<LoopbackAccessEvent>>(
             LOOPBACK_ACCESS_RINGBUF_NETD_PATH);
 
